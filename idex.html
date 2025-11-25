@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sheetrock Advanced Estimator (vb1)</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for aesthetic enhancements */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+            min-height: 100vh;
+        }
+        .card {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 5px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .input-group label {
+            font-weight: 500;
+            color: #374151;
+        }
+        .input-group input, .input-group select {
+            border: 1px solid #d1d5db;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+        }
+        .result-box {
+            background-color: #e5f0ff;
+            border: 1px solid #3b82f6;
+        }
+        /* Style for the new additional cost input in the sections */
+        .cost-adj-input {
+            background-color: #f0f9ff; /* light blue background */
+            border-left: 3px solid #60a5fa;
+        }
+        /* Style for finish multiplier input */
+        .finish-price-input {
+            background-color: #fefce8; /* light yellow background */
+            border-left: 3px solid #fcd34d;
+        }
+        .rate-adage-input {
+            background-color: #f2eaff; /* light purple background */
+            border-left: 3px solid #a78bfa;
+        }
+        .final-rate {
+            background-color: #d1f7d1;
+            border: 1px solid #10b981;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="p-4 flex items-start justify-center">
+
+    <div id="app" class="w-full max-w-5xl mt-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Sheetrock Advanced Estimator (vb1)</h1>
+            <p class="text-gray-500">Includes adjustable multipliers and complex pricing factors.</p>
+        </header>
+
+        <!-- Main Card Container -->
+        <div class="card bg-white p-6 md:p-8 rounded-xl space-y-8">
+
+            <!-- Section 1: Global Inputs & Base Pricing -->
+            <section>
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">1. Base Project Details & Global Factors</h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    
+                    <!-- Column 1: Base Inputs -->
+                    <div class="space-y-4">
+                        <h3 class="font-medium text-gray-600 border-b pb-1">Base Project Inputs</h3>
+                        <div class="input-group flex flex-col">
+                            <label for="footagePrice" class="mb-1">Base Footage Price ($/sq ft)</label>
+                            <input type="number" id="footagePrice" placeholder="e.g., 1.50" value="1.50" step="0.01" min="0" oninput="calculateEstimate()">
+                        </div>
+                        <div class="input-group flex flex-col">
+                            <label for="totalFloorArea" class="mb-1">Total Floor Plan Area (sq ft)</label>
+                            <input type="number" id="totalFloorArea" placeholder="e.g., 2000" min="1" value="2000" oninput="calculateEstimate()">
+                        </div>
+                    </div>
+                    
+                    <!-- Column 2: Complexity Multipliers (Impacts Area & Price) -->
+                    <div class="space-y-4">
+                        <h3 class="font-medium text-gray-600 border-b pb-1">Area Multiplier Adders</h3>
+                        <div class="input-group flex flex-col">
+                            <label for="cutUpFactor" class="mb-1">How Cut Up is the House?</label>
+                            <select id="cutUpFactor" onchange="calculateEstimate()">
+                                <option value="0.00">Not Very Cut Up (0.00 Multiplier/Price Adj)</option>
+                                <option value="0.03">Somewhat Cut Up (+0.03 Multiplier/Price Adj)</option>
+                                <option value="0.06" selected>Very Cut Up (+0.06 Multiplier/Price Adj)</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Impacts Area Multiplier and Price/sq ft.</p>
+                        </div>
+                        <div class="input-group flex flex-col">
+                            <label for="beadComplication" class="mb-1">Corner Bead Complication</label>
+                            <select id="beadComplication" onchange="calculateEstimate()">
+                                <option value="0.00">Not Complicated (0.00 Multiplier Adj)</option>
+                                <option value="0.03">Somewhat Complicated (+0.03 Multiplier Adj)</option>
+                                <option value="0.06">Very Complicated (+0.06 Multiplier Adj)</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Impacts Area Multiplier only.</p>
+                        </div>
+                    </div>
+
+                    <!-- Column 3: Home Type Selection -->
+                    <div class="space-y-4">
+                        <h3 class="font-medium text-gray-600 border-b pb-1">Home Type Adage (Selection)</h3>
+                        <div class="input-group flex flex-col">
+                            <label for="homeType" class="mb-1">Select Home Type Complexity</label>
+                            <select id="homeType" onchange="calculateEstimate()">
+                                <option value="TRACK">Track Home</option>
+                                <option value="CUSTOM_BASIC">Custom Home Basic</option>
+                                <option value="CUSTOM_COMPLEX" selected>Custom Home Complex</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Applies the corresponding rate defined below to Price/sq ft.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Column 4: Define Adage Costs/Prices -->
+                    <div class="space-y-4">
+                        <h3 class="font-medium text-gray-600 border-b pb-1">Define Adage Prices/Multipliers</h3>
+                        
+                        <!-- Home Type Rate Adages -->
+                        <div class="input-group flex flex-col">
+                            <label for="trackAdageRate" class="mb-1 text-sm text-purple-700">Track Home Rate Adage ($/sq ft)</label>
+                            <input type="number" id="trackAdageRate" placeholder="e.g., 0.00" value="0.00" min="0" step="0.01" oninput="calculateEstimate()" class="rate-adage-input">
+                        </div>
+                        <div class="input-group flex flex-col">
+                            <label for="customBasicAdageRate" class="mb-1 text-sm text-purple-700">Custom Basic Rate Adage ($/sq ft)</label>
+                            <input type="number" id="customBasicAdageRate" placeholder="e.g., 0.20" value="0.20" min="0" step="0.01" oninput="calculateEstimate()" class="rate-adage-input">
+                        </div>
+                        <div class="input-group flex flex-col">
+                            <label for="customComplexAdageRate" class="mb-1 text-sm text-purple-700">Custom Complex Rate Adage ($/sq ft)</label>
+                            <input type="number" id="customComplexAdageRate" placeholder="e.g., 0.40" value="0.40" min="0" step="0.01" oninput="calculateEstimate()" class="rate-adage-input">
+                        </div>
+
+                        <!-- Finish Level Price/Sq Ft Adders (UPDATED LOGIC) -->
+                        <div class="input-group flex flex-col pt-2 border-t mt-4 border-gray-200">
+                            <label for="l3PriceAdage" class="mb-1 text-sm text-yellow-700">Level 3 Price/Sq Ft Adder ($)</label>
+                            <input type="number" id="l3PriceAdage" placeholder="e.g., 0.00" value="0.00" min="0" step="0.01" oninput="calculateEstimate()" class="finish-price-input">
+                        </div>
+                        <div class="input-group flex flex-col">
+                            <label for="l4PriceAdage" class="mb-1 text-sm text-yellow-700">Level 4 Price/Sq Ft Adder ($)</label>
+                            <input type="number" id="l4PriceAdage" placeholder="e.g., 0.05" value="0.10" min="0" step="0.01" oninput="calculateEstimate()" class="finish-price-input">
+                        </div>
+                        <div class="input-group flex flex-col">
+                            <label for="l5PriceAdage" class="mb-1 text-sm text-yellow-700">Level 5 Price/Sq Ft Adder ($)</label>
+                            <input type="number" id="l5PriceAdage" placeholder="e.g., 0.10" value="0.25" min="0" step="0.01" oninput="calculateEstimate()" class="finish-price-input">
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">These increase the Price/Sq Ft applied to the calculated sheetrock area.</p>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Section 2: Height Sections (Dynamic) -->
+            <section>
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">2. Ceiling Height Sections & Local Adage</h2>
+                <p class="text-sm text-gray-500 mb-4">Define area, height, finish level (now impacts price/sq ft), and any section-specific costs.</p>
+                
+                <div id="sectionsContainer" class="space-y-4">
+                    <!-- Initial Section will be added by JS -->
+                </div>
+                
+                <button onclick="addSection()" class="mt-4 w-full md:w-auto bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-150">
+                    + Add Height Section
+                </button>
+
+                <div id="areaSummary" class="mt-4 text-sm font-medium p-2 rounded-lg bg-gray-100 text-gray-600">
+                    Total Area Defined: 0 sq ft / 0 sq ft
+                </div>
+            </section>
+
+            <!-- Section 3: Results Display -->
+            <section>
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">3. Estimated Results</h2>
+                
+                <div class="result-box p-4 rounded-xl space-y-4">
+                    
+                    <!-- Row 1: Key Cost Drivers -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <p class="font-medium text-gray-700">Effective Base Price/sq ft (Before Section Finish Adj): <span id="effectivePrice" class="font-bold text-gray-700">$0.00</span></p>
+                        
+                        <!-- Effective Overall Multiplier -->
+                        <p class="font-medium text-gray-700">Effective Overall Multiplier: <span id="effectiveMultiplier" class="font-bold text-blue-500">0.000</span></p>
+                        
+                        <!-- Adjusted Base Multiplier (for reference only) -->
+                        <p class="font-medium text-gray-400 hidden">8ft Base Multiplier: <span id="adjustedMultiplier" class="font-bold text-gray-400">3.33</span></p>
+                    </div>
+                    
+                    <hr class="border-blue-300">
+
+                    <!-- Row 2: Final Totals -->
+                    <div class="flex justify-between items-center">
+                        <p class="text-lg font-medium text-gray-800">Total Adage Costs (Section Specific $ Adders):</p>
+                        <p id="totalAdageCost" class="text-xl font-semibold text-red-600">$0.00</p>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <p class="text-lg font-medium text-gray-800">Estimated Sheetrock Area (Based on Height & Multipliers):</p>
+                        <p id="estimatedArea" class="text-2xl font-bold text-blue-700">0 sq ft</p>
+                    </div>
+                    
+                    <hr class="border-blue-300">
+
+                    <!-- Final Cost -->
+                    <div class="final-rate flex justify-between items-center">
+                        <p class="text-xl font-extrabold text-green-700">Effective Rate Per Floor Plan Sq Ft:</p>
+                        <p id="ratePerSqFt" class="text-3xl font-extrabold text-green-700">$0.00</p>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <p class="text-lg font-medium text-gray-800">Estimated Total Project Charge:</p>
+                        <p id="estimatedCost" class="text-3xl font-extrabold text-blue-700">$0.00</p>
+                    </div>
+                </div>
+                
+                <p id="errorWarning" class="mt-4 text-sm text-red-600 font-medium hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1 -mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.765 1.36-.212 3.099-1.743 3.099H4.42c-1.53 0-2.508-1.739-1.743-3.099l5.58-9.92zM10 13a1 1 0 100-2 1 1 0 000 2zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                    Warning: The sum of defined floor areas exceeds the Total Floor Plan Area. The calculation uses the defined section areas.
+                </p>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add the initial section and immediately run calculation to populate readouts.
+            addSection(true);
+        });
+
+        let sectionCount = 0;
+
+        // Constants based on original vb1 logic
+        const BASE_HEIGHT = 8;
+        const BASE_MULTIPLIER_8FT = 3.33;
+        const INCREMENT_PER_FOOT = 0.25;
+
+        /**
+         * Calculates the Sheetrock multiplier based on ceiling height and the global base multiplier.
+         * NOTE: The baseMultiplier here includes Cut Up and Bead Complication, but NOT Finish.
+         * @param {number} height - The ceiling height in feet.
+         * @param {number} baseMultiplier - The base multiplier (3.33 + cut up factor + bead complication).
+         * @returns {number} The calculated section multiplier.
+         */
+        function calculateMultiplier(height, baseMultiplier) {
+            
+            if (typeof height !== 'number' || height <= 0) {
+                return 0;
+            }
+            
+            if (height <= BASE_HEIGHT) {
+                return baseMultiplier;
+            }
+
+            // The multiplier increase only happens for height over 8ft
+            const extraFeet = height - BASE_HEIGHT;
+            const multiplierIncrease = Math.floor(extraFeet) * INCREMENT_PER_FOOT;
+            const finalMultiplier = baseMultiplier + multiplierIncrease;
+            
+            return parseFloat(finalMultiplier.toFixed(3));
+        }
+
+        /**
+         * Adds a new height section input group to the UI.
+         * @param {boolean} isInitial - Flag to determine if this is the first section (no delete button).
+         */
+        function addSection(isInitial = false) {
+            sectionCount++;
+            const id = `section-${sectionCount}`;
+            const container = document.getElementById('sectionsContainer');
+            
+            const newSection = document.createElement('div');
+            newSection.id = id;
+            newSection.classList.add('bg-white', 'p-4', 'border', 'border-gray-200', 'rounded-lg', 'space-y-4', 'md:grid', 'md:grid-cols-5', 'md:gap-4', 'items-end');
+            
+            newSection.innerHTML = `
+                <div class="input-group flex flex-col">
+                    <label for="${id}-area" class="mb-1 text-sm">Floor Area (sq ft)</label>
+                    <input type="number" id="${id}-area" placeholder="e.g., 1000" min="1" value="${isInitial ? 1500 : 500}" oninput="calculateEstimate()" class="w-full">
+                </div>
+                <div class="input-group flex flex-col">
+                    <label for="${id}-height" class="mb-1 text-sm">Ceiling Height (ft)</label>
+                    <input type="number" id="${id}-height" placeholder="e.g., 9" min="8" value="${isInitial ? 9 : 10}" oninput="calculateEstimate()" class="w-full">
+                </div>
+                <!-- Finish Level Selector -->
+                <div class="input-group flex flex-col">
+                    <label for="${id}-finish" class="mb-1 text-sm text-yellow-700">Finish Level</label>
+                    <select id="${id}-finish" onchange="calculateEstimate()" class="w-full finish-price-input">
+                        <option value="L3">Level 3</option>
+                        <option value="L4" ${isInitial ? 'selected' : ''}>Level 4</option>
+                        <option value="L5">Level 5</option>
+                    </select>
+                </div>
+                <!-- Additional Cost Consideration -->
+                <div class="input-group flex flex-col">
+                    <label for="${id}-adage" class="mb-1 text-sm text-blue-700">Section Cost ($)</label>
+                    <input type="number" id="${id}-adage" placeholder="e.g., 150" value="0.00" min="0" oninput="calculateEstimate()" class="w-full cost-adj-input">
+                </div>
+                <div class="md:col-span-1">
+                    ${isInitial ? 
+                        '<button class="w-full bg-gray-300 text-gray-600 py-2 px-4 rounded-lg cursor-not-allowed" disabled>Base Section</button>' : 
+                        `<button onclick="removeSection('${id}')" class="w-full bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-150">Remove</button>`
+                    }
+                </div>
+            `;
+
+            container.appendChild(newSection);
+            calculateEstimate();
+        }
+
+        /**
+         * Removes a height section from the UI.
+         */
+        function removeSection(id) {
+            const section = document.getElementById(id);
+            if (section) {
+                section.remove();
+                calculateEstimate();
+            }
+        }
+
+        /**
+         * Main function to gather all inputs and calculate the total estimate.
+         */
+        function calculateEstimate() {
+            // --- 1. Get Base Global Inputs and Adage Definitions ---
+            const basePrice = parseFloat(document.getElementById('footagePrice').value) || 0;
+            const totalFloorArea = parseFloat(document.getElementById('totalFloorArea').value) || 0;
+
+            // Global Home Type Adage Definitions (Price/Sq Ft Adders)
+            const trackAdageRate = parseFloat(document.getElementById('trackAdageRate').value) || 0;
+            const customBasicAdageRate = parseFloat(document.getElementById('customBasicAdageRate').value) || 0;
+            const customComplexAdageRate = parseFloat(document.getElementById('customComplexAdageRate').value) || 0;
+            
+            // Global Finish Price/Sq Ft Adders (Dollar Adders)
+            const l3PriceAdage = parseFloat(document.getElementById('l3PriceAdage').value) || 0;
+            const l4PriceAdage = parseFloat(document.getElementById('l4PriceAdage').value) || 0;
+            const l5PriceAdage = parseFloat(document.getElementById('l5PriceAdage').value) || 0;
+
+            
+            // --- 2. Get Global Factor Adjustments (Multipliers and Prices) ---
+            const cutUpFactor = parseFloat(document.getElementById('cutUpFactor').value) || 0;
+            const beadComplication = parseFloat(document.getElementById('beadComplication').value) || 0;
+            const selectedHomeType = document.getElementById('homeType').value;
+            
+            let homeTypeAdj = 0;
+            switch (selectedHomeType) {
+                case 'TRACK':
+                    homeTypeAdj = trackAdageRate;
+                    break;
+                case 'CUSTOM_BASIC':
+                    homeTypeAdj = customBasicAdageRate;
+                    break;
+                case 'CUSTOM_COMPLEX':
+                    homeTypeAdj = customComplexAdageRate;
+                    break;
+            }
+            
+            // --- 3. Calculate Effective Base Price and Area Multiplier (excluding per-section finish) ---
+            
+            // A. Effective BASE Price Calculation (Includes Global Price Factors)
+            // Price = Base Price + Cut Up Price Adj + Home Type Price Adj
+            const effectiveBasePrice = basePrice + cutUpFactor + homeTypeAdj;
+
+            // B. Base Area Multiplier (Includes Global Area Factors)
+            // Multiplier = 3.33 + Cut Up Multiplier Adj + Corner Bead Multiplier Adj
+            // NOTE: Finish Factor is NOT included here as it only impacts price.
+            const baseAreaMultiplier = BASE_MULTIPLIER_8FT + cutUpFactor + beadComplication;
+
+            // --- 4. Process Height Sections ---
+            let totalSheetrockArea = 0;
+            let totalDefinedArea = 0;
+            let totalSectionAdageCost = 0; // Remains for section-specific dollar adders.
+            let totalCalculatedCost = 0;
+            
+            const sections = document.querySelectorAll('#sectionsContainer > div');
+            
+            sections.forEach(section => {
+                const areaInput = section.querySelector('[id$="-area"]');
+                const heightInput = section.querySelector('[id$="-height"]');
+                const adageInput = section.querySelector('[id$="-adage"]');
+                const finishSelect = section.querySelector('[id$="-finish"]');
+                
+                const floorArea = parseFloat(areaInput.value) || 0;
+                const ceilingHeight = parseFloat(heightInput.value) || 0;
+                const sectionAdage = parseFloat(adageInput.value) || 0;
+                const selectedFinish = finishSelect ? finishSelect.value : 'L3'; 
+
+                // Adage Calculation (Section-Specific Dollar Adders)
+                totalSectionAdageCost += sectionAdage;
+
+                // Determine Finish Price Adder
+                let finishPriceAdage = 0;
+                switch (selectedFinish) {
+                    case 'L3':
+                        finishPriceAdage = l3PriceAdage;
+                        break;
+                    case 'L4':
+                        finishPriceAdage = l4PriceAdage;
+                        break;
+                    case 'L5':
+                        finishPriceAdage = l5PriceAdage;
+                        break;
+                }
+                
+                // Area and Cost Calculation
+                if (floorArea > 0 && ceilingHeight >= 8) {
+                    // 1. Calculate Area using the multiplier without the finish factor
+                    const finalAreaMultiplier = calculateMultiplier(ceilingHeight, baseAreaMultiplier);
+                    const sectionSheetrockArea = floorArea * finalAreaMultiplier;
+                    
+                    totalSheetrockArea += sectionSheetrockArea;
+                    totalDefinedArea += floorArea;
+
+                    // 2. Calculate the Section's FINAL Effective Price
+                    const sectionEffectivePrice = effectiveBasePrice + finishPriceAdage;
+                    
+                    // 3. Calculate Section Cost: (Area * Price) + Section Adage
+                    const sectionCost = (sectionSheetrockArea * sectionEffectivePrice) + sectionAdage;
+                    totalCalculatedCost += sectionCost;
+                }
+            });
+
+            // --- 5. Final Cost Calculation ---
+            
+            // The total cost is already calculated inside the loop now.
+            const estimatedTotalCost = totalCalculatedCost; 
+
+            // Effective Multiplier (weighted average)
+            const effectiveOverallMultiplier = totalDefinedArea > 0 ? (totalSheetrockArea / totalDefinedArea) : 0;
+
+            // Effective Rate Per Floor Plan Sq Ft
+            const ratePerFloorPlanSqFt = totalFloorArea > 0 ? (estimatedTotalCost / totalFloorArea) : 0;
+
+
+            // --- 6. Update UI ---
+
+            const formatter = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+            });
+
+            // Area Summary and Warning
+            const summaryElement = document.getElementById('areaSummary');
+            const warningElement = document.getElementById('errorWarning');
+
+            summaryElement.innerHTML = `Total Area Defined: <span class="text-blue-600">${totalDefinedArea.toFixed(0)}</span> sq ft / ${totalFloorArea.toFixed(0)} sq ft`;
+
+            if (totalDefinedArea > totalFloorArea && totalFloorArea > 0) {
+                warningElement.classList.remove('hidden');
+            } else {
+                warningElement.classList.add('hidden');
+            }
+            
+            // Results Display
+            document.getElementById('effectivePrice').textContent = formatter.format(effectiveBasePrice.toFixed(2));
+            document.getElementById('estimatedArea').textContent = totalSheetrockArea.toFixed(0) + ' sq ft';
+            document.getElementById('totalAdageCost').textContent = formatter.format(totalSectionAdageCost);
+            document.getElementById('estimatedCost').textContent = formatter.format(estimatedTotalCost);
+            
+            // Updated Metrics
+            document.getElementById('effectiveMultiplier').textContent = effectiveOverallMultiplier.toFixed(3);
+            document.getElementById('ratePerSqFt').textContent = formatter.format(ratePerFloorPlanSqFt);
+
+            // The original 8ft base multiplier is kept here but hidden for reference
+            document.getElementById('adjustedMultiplier').textContent = baseAreaMultiplier.toFixed(3);
+        }
+    </script>
+</body>
+</html>
+
