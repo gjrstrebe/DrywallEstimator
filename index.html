@@ -33,7 +33,7 @@
         }
         .cost-adj-input { background-color: #f0f9ff; border-left: 3px solid #60a5fa; }
         .finish-price-input { background-color: #fefce8; border-left: 3px solid #fcd34d; }
-        .rate-adder-input { background-color: #f2eaff; border-left: 3px solid #a78bfa; } /* Renamed from rate-adage-input */
+        .rate-adder-input { background-color: #f2eaff; border-left: 3px solid #a78bfa; } 
         .final-rate {
             background-color: #d1f7d1;
             border: 1px solid #10b981;
@@ -148,9 +148,9 @@
                     <div class="space-y-4">
                         <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Global Base Costs (Template)</h3>
                         <div class="input-group flex flex-col">
-                            <label for="footagePrice" class="mb-1 text-sm text-purple-700">Base Footage Price ($/sq ft)</label>
+                            <label for="footagePrice" class="mb-1 text-sm text-purple-700">All-in Base Price ($/sq ft)</label>
                             <input type="number" id="footagePrice" placeholder="e.g., 1.50" value="1.50" step="0.01" min="0" oninput="calculateEstimate()" class="rate-adder-input">
-                            <p class="text-xs text-gray-400 mt-1">The constant starting price for all labor before any adjustments.</p>
+                            <p class="text-xs text-gray-400 mt-1">The constant starting price (Labor + Materials) before any adjustments.</p>
                         </div>
                         <div class="input-group flex flex-col pt-2 border-t mt-4 border-gray-200">
                             <label for="beadPricePerLf" class="mb-1 text-sm text-red-700">Corner Bead Price/LF ($)</label>
@@ -159,7 +159,7 @@
                         </div>
                     </div>
                     
-                    <!-- Column 2: Home Type Rate Adders (Renamed from Adage) -->
+                    <!-- Column 2: Home Type Rate Adders -->
                     <div class="space-y-4">
                         <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Home Type Rate Adders ($/sq ft)</h3>
                         <div class="input-group flex flex-col">
@@ -228,10 +228,12 @@
                     
                     <!-- Row 1: Key Cost Drivers & Multipliers -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm border-b pb-3 border-blue-300">
-                        <p class="font-medium text-gray-700">Effective Base Price/sq ft (Pre-Finish Adj): <span id="effectivePrice" class="font-bold text-gray-700">$0.00</span></p>
+                        <!-- UPDATED UI TEXT HERE -->
+                        <p class="font-medium text-gray-700">Effective Labor Rate/sq ft (Pre-Finish Adj): <span id="effectivePrice" class="font-bold text-gray-700">$0.00</span></p>
                         <p class="font-medium text-gray-700">Effective Overall Multiplier: <span id="effectiveMultiplier" class="font-bold text-blue-500">0.000</span></p>
                         <p class="font-medium text-gray-700">Estimated Corner Bead LF: <span id="estimatedBeadLf" class="font-bold text-red-700">0 LF</span></p>
-                        <p class="font-medium text-gray-700">Materials Cost ($0.73/sq ft): <span id="estimatedMaterialsCost" class="font-bold text-green-700">$0.00</span></p>
+                        <!-- Estimated Materials Cost is now used in the final total calculation -->
+                        <p class="font-medium text-gray-700">Total Materials Cost ($0.73/sq ft): <span id="estimatedMaterialsCost" class="font-bold text-green-700">$0.00</span></p>
                     </div>
                     
                     <!-- Row 2: Final Totals -->
@@ -288,7 +290,8 @@
         const BASE_HEIGHT = 8;
         const BASE_MULTIPLIER_8FT = 3.33;
         const INCREMENT_PER_FOOT = 0.25;
-        const MATERIALS_COST_PER_SQFT = 0.73; // Constant for materials cost
+        // CRITICAL CONSTANT: Materials cost per square foot of Sheetrock Area
+        const MATERIALS_COST_PER_SQFT = 0.73; 
 
         // Map Home Type to its internal Base Bead Factor
         const HOME_TYPE_BEAD_FACTORS = {
@@ -298,13 +301,12 @@
         };
 
         // Map of URL Parameter Key to Input ID (for loading)
-        // NOTE: These are hidden from the user but used internally for the URL logic
         const URL_PARAM_MAP = {
             'bp': 'footagePrice',
             'ta': 'totalFloorArea',
             'cut': 'cutUpFactor',
             'ht': 'homeType',
-            'TAr': 'trackAdageRate', // keeping 'AdageRate' in JS variables for consistency with prior versions
+            'TAr': 'trackAdageRate', 
             'CBAr': 'customBasicAdageRate',
             'CCAr': 'customComplexAdageRate',
             'L3p': 'l3PriceAdage',
@@ -508,19 +510,23 @@
          */
         function calculateEstimate() {
             // --- 1. Get Base Global Inputs and Adder Definitions ---
-            const basePrice = parseFloat(document.getElementById('footagePrice').value) || 0;
+            const allInBasePrice = parseFloat(document.getElementById('footagePrice').value) || 0;
             const beadPricePerLf = parseFloat(document.getElementById('beadPricePerLf').value) || 0;
             const totalFloorArea = parseFloat(document.getElementById('totalFloorArea').value) || 0;
 
             // Global Adder Definitions (Home Type and Finish Level)
-            const trackAdageRate = parseFloat(document.getElementById('trackAdageRate').value) || 0; // Keeping JS variable name for internal consistency
+            const trackAdageRate = parseFloat(document.getElementById('trackAdageRate').value) || 0; 
             const customBasicAdageRate = parseFloat(document.getElementById('customBasicAdageRate').value) || 0;
             const customComplexAdageRate = parseFloat(document.getElementById('customComplexAdageRate').value) || 0;
             const l3PriceAdage = parseFloat(document.getElementById('l3PriceAdage').value) || 0;
             const l4PriceAdage = parseFloat(document.getElementById('l4PriceAdage').value) || 0;
             const l5PriceAdage = parseFloat(document.getElementById('l5PriceAdage').value) || 0;
 
-            // --- 2. Get Global Factor Adjustments (Multipliers and Prices) ---
+            // --- 2. Calculate PURE LABOR Base Rate (CRITICAL FIX) ---
+            // We subtract the fixed material cost to get the base labor rate for multipliers.
+            const pureLaborBaseRate = Math.max(0, allInBasePrice - MATERIALS_COST_PER_SQFT); 
+            
+            // --- 3. Apply Global Labor Adjustments ---
             const cutUpFactor = parseFloat(document.getElementById('cutUpFactor').value) || 0;
             const selectedHomeType = document.getElementById('homeType').value;
             
@@ -531,16 +537,17 @@
                 case 'CUSTOM_COMPLEX': homeTypeAdj = customComplexAdageRate; break;
             }
             
-            // --- 3. Calculate Effective Base Price and Area Multiplier ---
-            const effectiveBasePrice = basePrice + cutUpFactor + homeTypeAdj;
+            // This is the effective LABOR rate before the finish level adder is applied.
+            const effectiveLaborRate = pureLaborBaseRate + cutUpFactor + homeTypeAdj;
+            
             // Area Multiplier is now only affected by the Cut-Up Factor
             const baseAreaMultiplier = BASE_MULTIPLIER_8FT + cutUpFactor; 
 
             // --- 4. Process Height Sections ---
             let totalSheetrockArea = 0;
             let totalDefinedArea = 0;
-            let totalSectionAdageCost = 0; // Total of the "Local Adders" in section 2
-            let totalCalculatedCost = 0;
+            let totalSectionAdageCost = 0; 
+            let totalLaborCost = 0; // Total calculated labor cost
             let finalFinishLevel = 'L3'; 
 
             const sections = document.querySelectorAll('#sectionsContainer > div');
@@ -551,7 +558,7 @@
                 const sectionAdage = parseFloat(section.querySelector('[id$="-adage"]').value) || 0;
                 const selectedFinish = section.querySelector('[id$="-finish"]') ? section.querySelector('[id$="-finish"]').value : 'L3'; 
                 
-                // Track the highest finish level for the customer summary
+                // Track the highest finish level 
                 if (selectedFinish === 'L5') finalFinishLevel = 'L5';
                 else if (selectedFinish === 'L4' && finalFinishLevel !== 'L5') finalFinishLevel = 'L4';
                 
@@ -571,16 +578,16 @@
                     totalSheetrockArea += sectionSheetrockArea;
                     totalDefinedArea += floorArea;
 
-                    const sectionEffectivePrice = effectiveBasePrice + finishPriceAdage;
-                    const sectionCost = (sectionSheetrockArea * sectionEffectivePrice);
-                    totalCalculatedCost += sectionCost;
+                    // The effective price for THIS section is the effective LABOR rate + the finish adder
+                    const sectionEffectiveLaborPrice = effectiveLaborRate + finishPriceAdage;
+                    const sectionLaborCost = (sectionSheetrockArea * sectionEffectiveLaborPrice);
+                    totalLaborCost += sectionLaborCost;
                 }
             });
             
-            // --- 5. New Calculations (Bead and Materials) ---
+            // --- 5. Final Cost Assembly (Materials are included ONCE based on total Sheetrock Area) ---
 
-            // A. Dynamic Corner Bead Calculation (Simplified Logic)
-            // Bead Factor = Home Type Base Factor + Cut Up Multiplier
+            // A. Dynamic Corner Bead Calculation 
             const homeTypeBaseBeadFactor = HOME_TYPE_BEAD_FACTORS[selectedHomeType] || HOME_TYPE_BEAD_FACTORS['CUSTOM_BASIC'];
             const finalBeadFactor = homeTypeBaseBeadFactor + cutUpFactor;
             
@@ -590,11 +597,10 @@
             // All Adders/Adage Cost = Local Section Adders + Calculated Bead Cost
             const totalAddersCost = totalSectionAdageCost + beadCost;
             
-            // B. Estimated Materials Cost
+            // B. Estimated Materials Cost (Calculated once over total sheetrock area)
             const estimatedMaterialsCost = totalSheetrockArea * MATERIALS_COST_PER_SQFT;
             
-            // C. Final Total Cost (Labor + Materials + All Adders)
-            const totalLaborCost = totalCalculatedCost; // This is the base calculated labor based on effective price
+            // C. Final Total Cost = Total Labor Cost + Total Materials Cost + All Adders
             const estimatedTotalCost = totalLaborCost + estimatedMaterialsCost + totalAddersCost; 
 
             // Effective Multiplier (weighted average)
@@ -642,9 +648,9 @@
             document.getElementById('areaSummary').innerHTML = `Total Area Defined: <span class="text-blue-600">${totalDefinedArea.toFixed(0)}</span> sq ft / ${totalFloorArea.toFixed(0)} sq ft`;
 
             // Results Display
-            document.getElementById('effectivePrice').textContent = formatter.format(effectiveBasePrice.toFixed(2));
+            // NOTE: effectiveLaborRate is the pure labor portion
+            document.getElementById('effectivePrice').textContent = formatter.format(effectiveLaborRate.toFixed(2)); 
             document.getElementById('estimatedArea').textContent = totalSheetrockArea.toFixed(0) + ' sq ft';
-            // Total Adders Cost includes the final calculated bead cost + local section adders
             document.getElementById('totalAdageCost').textContent = formatter.format(totalAddersCost);
             
             // New Outputs
@@ -652,7 +658,7 @@
             document.getElementById('estimatedMaterialsCost').textContent = formatter.format(estimatedMaterialsCost);
             document.getElementById('effectiveMultiplier').textContent = effectiveOverallMultiplier.toFixed(3);
             
-            // Store final finish level globally for the summary generator
+            // Store final variables globally for the summary generator
             window.finalFinishLevel = finalFinishLevel;
             window.totalSheetrockArea = totalSheetrockArea;
             window.estimatedTotalCost = estimatedTotalCost;
