@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sheetrock Advanced Estimator</title>
+    <title>Sheetrock Advanced Estimator v2.0</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -65,6 +65,18 @@
             padding-top: 1rem;
             border-top: 2px dashed #e5e7eb;
         }
+        /* Rate breakdown for Floor Area (3 columns) */
+        .rate-breakdown-floor {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        /* Rate breakdown for Sheetrock Area (2 columns) */
+        .rate-breakdown-sheetrock {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
     </style>
 </head>
 <body class="p-4 flex items-start justify-center">
@@ -78,22 +90,22 @@
         <!-- Main Card Container -->
         <div class="card bg-white p-6 md:p-8 rounded-xl space-y-8">
             
-            <!-- Preset Buttons -->
+            <!-- Preset Buttons (UPDATED - Now decoupled from Advanced Settings) -->
             <section class="border-b pb-4">
-                <h2 class="text-xl font-semibold mb-3 text-gray-700">Quick Presets</h2>
-                <p class="text-sm text-gray-500 mb-3">Load your typical company rates and complexity factors instantly.</p>
+                <h2 class="text-xl font-semibold mb-3 text-gray-700">Quick Layout Presets</h2>
+                <p class="text-sm text-gray-500 mb-3">Instantly define project scale and complexity. **Does not change your Advanced Pricing settings.**</p>
                 <div class="flex flex-wrap gap-3">
-                    <button onclick="loadPreset('TRACK_L3')" class="bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition duration-150 text-sm">Track Home (L3)</button>
-                    <button onclick="loadPreset('CUSTOM_L4')" class="bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition duration-150 text-sm">Custom Basic (L4)</button>
-                    <button onclick="loadPreset('COMPLEX_L5')" class="bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition duration-150 text-sm">Complex Custom (L5)</button>
+                    <button onclick="loadPreset('SIMPLE_TRACK')" class="bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition duration-150 text-sm text-left">Simple Track Home (1600 sq ft, 8ft flat)</button>
+                    <button onclick="loadPreset('CUSTOM_MEDIUM')" class="bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition duration-150 text-sm text-left">Custom Home (2500 sq ft, 9ft & 16ft high area)</button>
+                    <button onclick="loadPreset('COMPLEX_CUSTOM')" class="bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition duration-150 text-sm text-left">Complex Custom (3000 sq ft, varying heights, cut up)</button>
                 </div>
             </section>
 
-            <!-- Section 1: Global Inputs & Base Pricing (Now focused on Dynamic Project Inputs) -->
+            <!-- Section 1: Global Inputs & Base Pricing -->
             <section>
                 <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">1. Project Dimensions & Complexity</h2>
                 
-                <!-- Main visible inputs (only dynamic fields remain) -->
+                <!-- Main visible inputs -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                     
                     <!-- Column 1: Base Input (Area) -->
@@ -101,12 +113,12 @@
                         <h3 class="font-medium text-gray-600 border-b pb-1">Base Project Inputs (Per-Job)</h3>
                         <div class="input-group flex flex-col">
                             <label for="totalFloorArea" class="mb-1">Total Floor Plan Area (sq ft)</label>
-                            <input type="number" id="totalFloorArea" placeholder="e.g., 2000" min="1" value="2000" oninput="calculateEstimate()">
+                            <input type="number" id="totalFloorArea" placeholder="e.g., 2500" min="1" value="2500" oninput="calculateEstimate()">
                             <p class="text-xs text-gray-400 mt-1">Total heated and finished area being sheetrocked.</p>
                         </div>
                     </div>
                     
-                    <!-- Column 2: Complexity Multipliers (Area/Price) -->
+                    <!-- Column 2: Complexity Multipliers -->
                     <div class="space-y-4 lg:col-span-3">
                         <h3 class="font-medium text-gray-600 border-b pb-1">Complexity Multipliers (Per-Job)</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -114,8 +126,8 @@
                                 <label for="cutUpFactor" class="mb-1">Overall Project Complexity</label>
                                 <select id="cutUpFactor" onchange="calculateEstimate()">
                                     <option value="0.00">Low Complexity (0.00x Rate Adj)</option>
-                                    <option value="0.03">Medium Complexity (+0.03x Rate Adj)</option>
-                                    <option value="0.06" selected>High Complexity (+0.06x Rate Adj)</option>
+                                    <option value="0.03" selected>Medium Complexity (+0.03x Rate Adj)</option>
+                                    <option value="0.06">High Complexity (+0.06x Rate Adj)</option>
                                 </select>
                                 <p class="text-xs text-gray-400 mt-1">Adjusts labor rate based on corners, non-standard framing, and cut-up areas.</p>
                             </div>
@@ -123,8 +135,8 @@
                                 <label for="homeType" class="mb-1">Select Home Type Pricing Tier</label>
                                 <select id="homeType" onchange="calculateEstimate()">
                                     <option value="TRACK">Track Home</option>
-                                    <option value="CUSTOM_BASIC">Custom Home Basic</option>
-                                    <option value="CUSTOM_COMPLEX" selected>Custom Home Complex</option>
+                                    <option value="CUSTOM_BASIC" selected>Custom Home Basic</option>
+                                    <option value="CUSTOM_COMPLEX">Custom Home Complex</option>
                                 </select>
                                 <p class="text-xs text-gray-400 mt-1">Applies your company's predetermined pricing adder for this market segment.</p>
                             </div>
@@ -144,7 +156,7 @@
 
                 <!-- HIDDEN SECTION: Template Management Inputs (All your company's constants) -->
                 <div id="advancedPricingSection" class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <!-- Column 1: Base Rate & Bead Cost (Moved here) -->
+                    <!-- Column 1: Base Rate & Bead Cost -->
                     <div class="space-y-4">
                         <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Global Base Costs (Template)</h3>
                         <div class="input-group flex flex-col">
@@ -227,37 +239,66 @@
                 <div id="resultsContainer" class="result-box p-4 rounded-xl space-y-4">
                     
                     <!-- Row 1: Key Cost Drivers & Multipliers -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm border-b pb-3 border-blue-300">
-                        <!-- UPDATED UI TEXT HERE -->
-                        <p class="font-medium text-gray-700">Effective Labor Rate/sq ft (Pre-Finish Adj): <span id="effectivePrice" class="font-bold text-gray-700">$0.00</span></p>
-                        <p class="font-medium text-gray-700">Effective Overall Multiplier: <span id="effectiveMultiplier" class="font-bold text-blue-500">0.000</span></p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm border-b pb-3 border-blue-300">
+                        <p class="font-medium text-gray-700">Estimated Sheetrock Area: <span id="estimatedArea" class="font-bold text-blue-700">0 sq ft</span></p>
                         <p class="font-medium text-gray-700">Estimated Corner Bead LF: <span id="estimatedBeadLf" class="font-bold text-red-700">0 LF</span></p>
-                        <!-- Estimated Materials Cost is now used in the final total calculation -->
-                        <p class="font-medium text-gray-700">Total Materials Cost ($0.73/sq ft): <span id="estimatedMaterialsCost" class="font-bold text-green-700">$0.00</span></p>
+                        <p class="font-medium text-gray-700">Effective Sheetrock Multiplier: <span id="effectiveMultiplier" class="font-bold text-blue-500">0.000x</span></p>
+                    </div>
+
+                    <!-- Row 2: RATE BREAKDOWN PER SHEETROCK AREA (NEW & CRITICAL SECTION) -->
+                    <h4 class="text-lg font-bold text-gray-700 pt-2 border-t mt-4">Cost Breakdown Per Sheetrock Sq Ft</h4>
+                    <div class="rate-breakdown-sheetrock">
+                        <div class="bg-blue-100 p-3 rounded-lg flex flex-col justify-center items-center text-center">
+                            <p class="text-sm font-semibold text-blue-700">Weighted Avg Labor Rate / Sheetrock Sq Ft</p>
+                            <p id="weightedAvgLaborRatePerSheetrockSqFt" class="text-xl font-bold text-blue-700">$0.00</p>
+                        </div>
+                        <div class="final-rate flex flex-col justify-center items-center text-center">
+                            <p class="text-sm font-extrabold text-green-700">All-In Price / Sheetrock Sq Ft (Labor + Fixed Materials)</p>
+                            <p id="weightedAvgAllInRatePerSheetrockSqFt" class="text-2xl font-extrabold text-green-700">$0.00</p>
+                        </div>
+                    </div>
+
+                    <hr class="border-blue-300">
+                    
+                    <!-- Row 3: DOLLAR TOTALS (Labor and Materials Final Outputs) -->
+                    <h4 class="text-lg font-bold text-gray-700 pt-2 border-t mt-4">Total Outputs (Labor, Materials, Adders)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-lg font-medium">
+                         <div class="bg-gray-100 p-3 rounded-lg">
+                            <p class="text-gray-800">Total Labor Cost:</p>
+                            <p id="totalLaborCostDisplay" class="font-bold text-blue-700">$0.00</p>
+                        </div>
+                        <div class="bg-gray-100 p-3 rounded-lg">
+                            <p class="text-gray-800">Total Fixed Materials Cost:</p>
+                            <p id="estimatedMaterialsCostDisplay" class="font-bold text-red-600">$0.00</p>
+                        </div>
+                        <div class="bg-gray-100 p-3 rounded-lg">
+                            <p class="text-gray-800">Total Bead/Adage Adders:</p>
+                            <p id="totalAddersCost" class="font-bold text-red-600">$0.00</p>
+                        </div>
                     </div>
                     
-                    <!-- Row 2: Final Totals -->
-                    <div class="flex justify-between items-center pt-2">
-                        <p class="text-lg font-medium text-gray-800">Total Project Adders (Section/Bead Specific $ Adders):</p>
-                        <p id="totalAdageCost" class="text-xl font-semibold text-red-600">$0.00</p>
-                    </div>
-                    
-                    <div class="flex justify-between items-center">
-                        <p class="text-lg font-medium text-gray-800">Estimated Sheetrock Area (Based on Height & Multipliers):</p>
-                        <p id="estimatedArea" class="text-2xl font-bold text-blue-700">0 sq ft</p>
+                    <div class="flex justify-between items-center pt-4 border-t border-blue-400">
+                        <p class="text-lg font-medium text-gray-800">TOTAL PROJECT CHARGE:</p>
+                        <p id="estimatedCost" class="text-3xl font-extrabold text-blue-700">$0.00</p>
                     </div>
                     
                     <hr class="border-blue-300">
 
-                    <!-- Final Cost -->
-                    <div class="final-rate flex justify-between items-center">
-                        <p class="text-xl font-extrabold text-green-700">Effective Rate Per Floor Plan Sq Ft:</p>
-                        <p id="ratePerSqFt" class="text-3xl font-extrabold text-green-700">$0.00</p>
-                    </div>
-
-                    <div class="flex justify-between items-center">
-                        <p class="text-lg font-medium text-gray-800">Estimated Total Project Charge (Labor + Materials + Adders):</p>
-                        <p id="estimatedCost" class="text-3xl font-extrabold text-blue-700">$0.00</p>
+                    <!-- Row 4: RATE BREAKDOWN PER FLOOR AREA (Previous implementation) -->
+                    <h4 class="text-lg font-bold text-gray-700 pt-2 border-t mt-4">Cost Breakdown Per Floor Plan Sq Ft</h4>
+                    <div class="rate-breakdown-floor pt-2">
+                        <div class="final-rate flex flex-col justify-center items-center text-center">
+                            <p class="text-sm font-extrabold text-green-700">1. Total All-In Price / Floor Sq Ft</p>
+                            <p id="ratePerSqFt" class="text-2xl font-extrabold text-green-700">$0.00</p>
+                        </div>
+                        <div class="bg-blue-100 p-2 rounded-lg flex flex-col justify-center items-center text-center">
+                            <p class="text-sm font-semibold text-blue-700">2. Labor Price / Floor Sq Ft</p>
+                            <p id="laborRatePerSqFt" class="text-xl font-bold text-blue-700">$0.00</p>
+                        </div>
+                        <div class="bg-red-100 p-2 rounded-lg flex flex-col justify-center items-center text-center">
+                            <p class="text-sm font-semibold text-red-700">3. Materials Price / Floor Sq Ft</p>
+                            <p id="materialsRatePerSqFt" class="text-xl font-bold text-red-700">$0.00</p>
+                        </div>
                     </div>
                 </div>
 
@@ -290,7 +331,7 @@
         const BASE_HEIGHT = 8;
         const BASE_MULTIPLIER_8FT = 3.33;
         const INCREMENT_PER_FOOT = 0.25;
-        // CRITICAL CONSTANT: Materials cost per square foot of Sheetrock Area
+        // CRITICAL CONSTANT: Fixed Materials cost per square foot of Sheetrock Area
         const MATERIALS_COST_PER_SQFT = 0.73; 
 
         // Map Home Type to its internal Base Bead Factor
@@ -315,24 +356,33 @@
             'bpl': 'beadPricePerLf',
         };
 
+        // NEW PRESET STRUCTURE: Defines complexity, home type, area, and initial sections.
         const PRESETS = {
-            TRACK_L3: {
-                footagePrice: 1.25, totalFloorArea: 2500, cutUpFactor: '0.00', homeType: 'TRACK',
-                trackAdageRate: 0.00, customBasicAdageRate: 0.20, customComplexAdageRate: 0.40,
-                l3PriceAdage: 0.00, l4PriceAdage: 0.05, l5PriceAdage: 0.15,
-                beadPricePerLf: 1.00,
+            SIMPLE_TRACK: {
+                totalFloorArea: 1600, 
+                cutUpFactor: '0.00', 
+                homeType: 'TRACK',
+                // Section structure: [{percent_of_area: float, height: int}]
+                sections: [{p: 1.00, h: 8}] 
             },
-            CUSTOM_L4: {
-                footagePrice: 1.50, totalFloorArea: 3500, cutUpFactor: '0.03', homeType: 'CUSTOM_BASIC',
-                trackAdageRate: 0.00, customBasicAdageRate: 0.25, customComplexAdageRate: 0.50,
-                l3PriceAdage: 0.00, l4PriceAdage: 0.10, l5PriceAdage: 0.25,
-                beadPricePerLf: 1.25, 
+            CUSTOM_MEDIUM: {
+                totalFloorArea: 2500, 
+                cutUpFactor: '0.03', 
+                homeType: 'CUSTOM_BASIC',
+                sections: [
+                    {p: 0.65, h: 9}, // 65% @ 9ft
+                    {p: 0.35, h: 16} // 35% @ 16ft high area
+                ]
             },
-            COMPLEX_L5: {
-                footagePrice: 1.75, totalFloorArea: 4000, cutUpFactor: '0.06', homeType: 'CUSTOM_COMPLEX',
-                trackAdageRate: 0.00, customBasicAdageRate: 0.30, customComplexAdageRate: 0.60,
-                l3PriceAdage: 0.00, l4PriceAdage: 0.15, l5PriceAdage: 0.35,
-                beadPricePerLf: 1.50, 
+            COMPLEX_CUSTOM: {
+                totalFloorArea: 3000, 
+                cutUpFactor: '0.06', 
+                homeType: 'CUSTOM_COMPLEX',
+                sections: [
+                    {p: 0.40, h: 8}, // 40% @ 8ft
+                    {p: 0.35, h: 10}, // 35% @ 10ft
+                    {p: 0.25, h: 16} // 25% @ 16ft high area
+                ]
             }
         };
 
@@ -372,25 +422,37 @@
         }
 
         /**
-         * Loads a predefined set of global values into the inputs.
+         * Loads a predefined set of complexity, area, and sections.
+         * NOTE: This function deliberately AVOIDS touching the Advanced Pricing Template inputs.
          */
         function loadPreset(presetName) {
             const preset = PRESETS[presetName];
             if (!preset) return;
 
-            // Use the URL_PARAM_MAP keys to iterate through all relevant inputs
-            for (const [key, elementId] of Object.entries(URL_PARAM_MAP)) {
-                if (preset[elementId] !== undefined) {
-                    const element = document.getElementById(elementId);
-                    if (element) {
-                        element.value = preset[elementId];
-                    }
+            // 1. Set Global Area and Complexity Inputs
+            document.getElementById('totalFloorArea').value = preset.totalFloorArea;
+            document.getElementById('cutUpFactor').value = preset.cutUpFactor;
+            document.getElementById('homeType').value = preset.homeType;
+            
+            // 2. Clear Existing Sections
+            const container = document.getElementById('sectionsContainer');
+            container.innerHTML = '';
+            sectionCount = 0; // Reset section counter
+            
+            // 3. Create New Sections based on preset percentages
+            const totalArea = preset.totalFloorArea;
+
+            preset.sections.forEach((s, index) => {
+                const area = Math.round(totalArea * s.p);
+                // The very first section must be created differently to ensure the 'Remove' button is disabled
+                if (index === 0) {
+                    addSection(true, area, s.h);
+                } else {
+                    addSection(false, area, s.h);
                 }
-            }
-            // Ensure initial section is loaded
-            if (document.querySelectorAll('#sectionsContainer > div').length === 0) {
-                 addSection(true);
-            }
+            });
+
+            // 4. Recalculate everything
             calculateEstimate();
         }
 
@@ -418,12 +480,17 @@
             // 1. Load parameters from the URL first
             const paramsFound = loadUrlParameters(); 
             
-            // 2. Add the initial section (default values will be used if not overridden)
-            // If no params were found, try loading a default preset for better UX
+            // 2. If no parameters are found, load a default preset (Custom Medium) for a clean start.
             if (!paramsFound) {
-                 loadPreset('CUSTOM_L4');
+                 loadPreset('CUSTOM_MEDIUM');
             } else {
-                 addSection(true); // Just ensure a section exists and calculates
+                 // If params were found, we still need to ensure at least one section exists if the user didn't define them via URL.
+                 if (document.querySelectorAll('#sectionsContainer > div').length === 0) {
+                     // Default to a 100% 8ft section matching the loaded totalFloorArea
+                     const totalArea = parseFloat(document.getElementById('totalFloorArea').value) || 2500;
+                     addSection(true, totalArea, 9); 
+                 }
+                 calculateEstimate(); // Recalculate based on loaded data
             }
         });
 
@@ -449,8 +516,11 @@
 
         /**
          * Adds a new height section input group to the UI.
+         * @param {boolean} isInitial - Should the section be treated as the mandatory, non-removable base section.
+         * @param {number} defaultArea - The default floor area for this section (used by presets).
+         * @param {number} defaultHeight - The default height for this section (used by presets).
          */
-        function addSection(isInitial = false) {
+        function addSection(isInitial = false, defaultArea = 500, defaultHeight = 9) {
             sectionCount++;
             const id = `section-${sectionCount}`;
             const container = document.getElementById('sectionsContainer');
@@ -459,21 +529,24 @@
             newSection.id = id;
             newSection.classList.add('bg-white', 'p-4', 'border', 'border-gray-200', 'rounded-lg', 'space-y-4', 'md:grid', 'md:grid-cols-5', 'md:gap-4', 'items-end');
             
+            // Set Finish Level to L3 by default (Per requirement 6)
+            const defaultFinishLevel = 'L3'; 
+            
             newSection.innerHTML = `
                 <div class="input-group flex flex-col">
                     <label for="${id}-area" class="mb-1 text-sm">Floor Area (sq ft)</label>
-                    <input type="number" id="${id}-area" placeholder="e.g., 1000" min="1" value="${isInitial ? 1500 : 500}" oninput="calculateEstimate()" class="w-full">
+                    <input type="number" id="${id}-area" placeholder="e.g., 1000" min="1" value="${defaultArea}" oninput="calculateEstimate()" class="w-full">
                 </div>
                 <div class="input-group flex flex-col">
                     <label for="${id}-height" class="mb-1 text-sm">Ceiling Height (ft)</label>
-                    <input type="number" id="${id}-height" placeholder="e.g., 9" min="8" value="${isInitial ? 9 : 10}" oninput="calculateEstimate()" class="w-full">
+                    <input type="number" id="${id}-height" placeholder="e.g., 9" min="8" value="${defaultHeight}" oninput="calculateEstimate()" class="w-full">
                 </div>
-                <!-- Finish Level Selector -->
+                <!-- Finish Level Selector (Defaults to L3) -->
                 <div class="input-group flex flex-col">
                     <label for="${id}-finish" class="mb-1 text-sm text-yellow-700">Finish Level</label>
                     <select id="${id}-finish" onchange="calculateEstimate()" class="w-full finish-price-input">
-                        <option value="L3">Level 3</option>
-                        <option value="L4" ${isInitial ? 'selected' : ''}>Level 4</option>
+                        <option value="L3" selected>Level 3</option>
+                        <option value="L4">Level 4</option>
                         <option value="L5">Level 5</option>
                     </select>
                 </div>
@@ -522,8 +595,7 @@
             const l4PriceAdage = parseFloat(document.getElementById('l4PriceAdage').value) || 0;
             const l5PriceAdage = parseFloat(document.getElementById('l5PriceAdage').value) || 0;
 
-            // --- 2. Calculate PURE LABOR Base Rate (CRITICAL FIX) ---
-            // We subtract the fixed material cost to get the base labor rate for multipliers.
+            // --- 2. Calculate PURE LABOR Base Rate ---
             const pureLaborBaseRate = Math.max(0, allInBasePrice - MATERIALS_COST_PER_SQFT); 
             
             // --- 3. Apply Global Labor Adjustments ---
@@ -537,10 +609,10 @@
                 case 'CUSTOM_COMPLEX': homeTypeAdj = customComplexAdageRate; break;
             }
             
-            // This is the effective LABOR rate before the finish level adder is applied.
-            const effectiveLaborRate = pureLaborBaseRate + cutUpFactor + homeTypeAdj;
+            // Base Labor rate before finish level and height multipliers are applied
+            const baseLaborRate = pureLaborBaseRate + cutUpFactor + homeTypeAdj;
             
-            // Area Multiplier is now only affected by the Cut-Up Factor
+            // Area Multiplier is affected by the Cut-Up Factor
             const baseAreaMultiplier = BASE_MULTIPLIER_8FT + cutUpFactor; 
 
             // --- 4. Process Height Sections ---
@@ -578,8 +650,8 @@
                     totalSheetrockArea += sectionSheetrockArea;
                     totalDefinedArea += floorArea;
 
-                    // The effective price for THIS section is the effective LABOR rate + the finish adder
-                    const sectionEffectiveLaborPrice = effectiveLaborRate + finishPriceAdage;
+                    // The effective LABOR price for THIS section = Base Labor Rate + Finish Adder
+                    const sectionEffectiveLaborPrice = baseLaborRate + finishPriceAdage;
                     const sectionLaborCost = (sectionSheetrockArea * sectionEffectiveLaborPrice);
                     totalLaborCost += sectionLaborCost;
                 }
@@ -597,7 +669,7 @@
             // All Adders/Adage Cost = Local Section Adders + Calculated Bead Cost
             const totalAddersCost = totalSectionAdageCost + beadCost;
             
-            // B. Estimated Materials Cost (Calculated once over total sheetrock area)
+            // B. Estimated Materials Cost (Fixed $0.73/sq ft of Sheetrock Area)
             const estimatedMaterialsCost = totalSheetrockArea * MATERIALS_COST_PER_SQFT;
             
             // C. Final Total Cost = Total Labor Cost + Total Materials Cost + All Adders
@@ -606,10 +678,26 @@
             // Effective Multiplier (weighted average)
             const effectiveOverallMultiplier = totalDefinedArea > 0 ? (totalSheetrockArea / totalDefinedArea) : 0;
 
-            // Effective Rate Per Floor Plan Sq Ft
+            // --- 6. New Rate Breakdown (Per Sheetrock Sq Ft) ---
+            
+            const weightedAvgLaborRatePerSheetrockSqFt = totalSheetrockArea > 0 ? (totalLaborCost / totalSheetrockArea) : 0;
+            
+            // This is the new CRITICAL METRIC requested: Labor + Fixed Materials
+            const weightedAvgAllInRatePerSheetrockSqFt = totalSheetrockArea > 0 ? ((totalLaborCost + estimatedMaterialsCost) / totalSheetrockArea) : 0;
+            
+            // --- 7. New Rate Breakdown (Per Floor Sq Ft) ---
+
+            // 1. Total All-In Price / Floor Sq Ft
             const ratePerFloorPlanSqFt = totalFloorArea > 0 ? (estimatedTotalCost / totalFloorArea) : 0;
             
-            // --- 6. Validation and UI Update ---
+            // 2. Total Labor Price / Floor Sq Ft
+            const laborRatePerFloorPlanSqFt = totalFloorArea > 0 ? (totalLaborCost / totalFloorArea) : 0;
+            
+            // 3. Total Materials Price / Floor Sq Ft (Includes fixed materials + calculated bead cost)
+            const materialsPriceComponent = estimatedMaterialsCost + beadCost;
+            const materialsRatePerFloorPlanSqFt = totalFloorArea > 0 ? (materialsPriceComponent / totalFloorArea) : 0;
+
+            // --- 8. Validation and UI Update ---
 
             const isAreaValid = totalDefinedArea === totalFloorArea;
             const validationWarning = document.getElementById('validationWarning');
@@ -631,7 +719,13 @@
                 
                 // Set all final cost outputs to N/A or $0.00 when blocked
                 document.getElementById('estimatedCost').textContent = '---';
+                document.getElementById('totalLaborCostDisplay').textContent = '---';
+                document.getElementById('estimatedMaterialsCostDisplay').textContent = '---';
                 document.getElementById('ratePerSqFt').textContent = '---';
+                document.getElementById('laborRatePerSqFt').textContent = '---';
+                document.getElementById('materialsRatePerSqFt').textContent = '---';
+                document.getElementById('weightedAvgLaborRatePerSheetrockSqFt').textContent = '---';
+                document.getElementById('weightedAvgAllInRatePerSheetrockSqFt').textContent = '---';
 
             } else {
                 validationWarning.classList.add('hidden');
@@ -639,24 +733,29 @@
 
                 // Update final cost outputs only when valid
                 document.getElementById('estimatedCost').textContent = formatter.format(estimatedTotalCost);
+                document.getElementById('totalLaborCostDisplay').textContent = formatter.format(totalLaborCost);
+                document.getElementById('estimatedMaterialsCostDisplay').textContent = formatter.format(estimatedMaterialsCost);
+                
+                // Update Sheetrock Area Rates
+                document.getElementById('weightedAvgLaborRatePerSheetrockSqFt').textContent = formatter.format(weightedAvgLaborRatePerSheetrockSqFt);
+                document.getElementById('weightedAvgAllInRatePerSheetrockSqFt').textContent = formatter.format(weightedAvgAllInRatePerSheetrockSqFt);
+                
+                // Update Floor Area Rates
                 document.getElementById('ratePerSqFt').textContent = formatter.format(ratePerFloorPlanSqFt);
+                document.getElementById('laborRatePerSqFt').textContent = formatter.format(laborRatePerFloorPlanSqFt);
+                document.getElementById('materialsRatePerSqFt').textContent = formatter.format(materialsRatePerFloorPlanSqFt);
             }
 
-            // --- 7. Update All Other UI Elements ---
+            // --- 9. Update All Other UI Elements ---
             
             // Area Summary
             document.getElementById('areaSummary').innerHTML = `Total Area Defined: <span class="text-blue-600">${totalDefinedArea.toFixed(0)}</span> sq ft / ${totalFloorArea.toFixed(0)} sq ft`;
 
             // Results Display
-            // NOTE: effectiveLaborRate is the pure labor portion
-            document.getElementById('effectivePrice').textContent = formatter.format(effectiveLaborRate.toFixed(2)); 
             document.getElementById('estimatedArea').textContent = totalSheetrockArea.toFixed(0) + ' sq ft';
-            document.getElementById('totalAdageCost').textContent = formatter.format(totalAddersCost);
-            
-            // New Outputs
+            document.getElementById('totalAddersCost').textContent = formatter.format(totalAddersCost);
             document.getElementById('estimatedBeadLf').textContent = estimatedBeadLf.toFixed(0) + ' LF';
-            document.getElementById('estimatedMaterialsCost').textContent = formatter.format(estimatedMaterialsCost);
-            document.getElementById('effectiveMultiplier').textContent = effectiveOverallMultiplier.toFixed(3);
+            document.getElementById('effectiveMultiplier').textContent = effectiveOverallMultiplier.toFixed(3) + 'x';
             
             // Store final variables globally for the summary generator
             window.finalFinishLevel = finalFinishLevel;
