@@ -90,7 +90,7 @@
         <!-- Main Card Container -->
         <div class="card bg-white p-6 md:p-8 rounded-xl space-y-8">
             
-            <!-- Preset Buttons (UPDATED - Now decoupled from Advanced Settings) -->
+            <!-- Preset Buttons (Now decoupled from Advanced Settings) -->
             <section class="border-b pb-4">
                 <h2 class="text-xl font-semibold mb-3 text-gray-700">Quick Layout Presets</h2>
                 <p class="text-sm text-gray-500 mb-3">Instantly define project scale and complexity. **Does not change your Advanced Pricing settings.**</p>
@@ -204,7 +204,12 @@
                             <input type="number" id="l5PriceAdage" placeholder="e.g., 0.10" value="0.25" min="0" step="0.01" oninput="calculateEstimate()" class="finish-price-input">
                         </div>
                     </div>
-
+                    
+                    <!-- Column 4: Placeholder/Spacer -->
+                    <div class="space-y-4">
+                        <h3 class="font-bold text-gray-700 mb-2 border-b pb-1 opacity-0">Spacer</h3>
+                        <p class="text-xs text-gray-400">This column is a placeholder for future custom adders.</p>
+                    </div>
                 </div>
             </section>
 
@@ -311,6 +316,10 @@
                         <button onclick="generateCustomerSummary()" class="bg-teal-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-teal-700 transition duration-150">
                             Generate Customer Summary
                         </button>
+                        <!-- UPDATED BUTTON: Copies scope and opens contract form in new tab -->
+                        <button onclick="generateContractScopeText()" class="bg-amber-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-amber-700 transition duration-150">
+                            Copy Scope & Open Contract Form
+                        </button>
                     </div>
                     
                     <!-- Modal/Output for Summary and Link -->
@@ -325,23 +334,19 @@
     </div>
 
     <script>
-        let sectionCount = 0;
-
-        // Constants based on original vb1 logic
+        // --- CONSTANTS ---
+        const CONTRACT_URL = 'https://gjrstrebe.github.io/Drywallcontract/'; // YOUR HOSTED CONTRACT URL
         const BASE_HEIGHT = 8;
         const BASE_MULTIPLIER_8FT = 3.33;
         const INCREMENT_PER_FOOT = 0.25;
-        // CRITICAL CONSTANT: Fixed Materials cost per square foot of Sheetrock Area
         const MATERIALS_COST_PER_SQFT = 0.73; 
 
-        // Map Home Type to its internal Base Bead Factor
         const HOME_TYPE_BEAD_FACTORS = {
-            'TRACK': 0.05,        // Low complexity
-            'CUSTOM_BASIC': 0.10, // Medium complexity
-            'CUSTOM_COMPLEX': 0.15 // High complexity
+            'TRACK': 0.05,
+            'CUSTOM_BASIC': 0.10,
+            'CUSTOM_COMPLEX': 0.15
         };
 
-        // Map of URL Parameter Key to Input ID (for loading)
         const URL_PARAM_MAP = {
             'bp': 'footagePrice',
             'ta': 'totalFloorArea',
@@ -353,25 +358,23 @@
             'L3p': 'l3PriceAdage',
             'L4p': 'l4PriceAdage',
             'L5p': 'l5PriceAdage',
-            'bpl': 'beadPricePerLf',
+            'bpl': 'beadPricePerLf'
         };
-
-        // NEW PRESET STRUCTURE: Defines complexity, home type, area, and initial sections.
+        
         const PRESETS = {
             SIMPLE_TRACK: {
                 totalFloorArea: 1600, 
                 cutUpFactor: '0.00', 
                 homeType: 'TRACK',
-                // Section structure: [{percent_of_area: float, height: int}]
-                sections: [{p: 1.00, h: 8}] 
+                sections: [{p: 1.00, h: 8, f: 'L3'}] 
             },
             CUSTOM_MEDIUM: {
                 totalFloorArea: 2500, 
                 cutUpFactor: '0.03', 
                 homeType: 'CUSTOM_BASIC',
                 sections: [
-                    {p: 0.65, h: 9}, // 65% @ 9ft
-                    {p: 0.35, h: 16} // 35% @ 16ft high area
+                    {p: 0.65, h: 9, f: 'L4'},
+                    {p: 0.35, h: 16, f: 'L4'}
                 ]
             },
             COMPLEX_CUSTOM: {
@@ -379,12 +382,16 @@
                 cutUpFactor: '0.06', 
                 homeType: 'CUSTOM_COMPLEX',
                 sections: [
-                    {p: 0.40, h: 8}, // 40% @ 8ft
-                    {p: 0.35, h: 10}, // 35% @ 10ft
-                    {p: 0.25, h: 16} // 25% @ 16ft high area
+                    {p: 0.40, h: 8, f: 'L4'},
+                    {p: 0.35, h: 10, f: 'L5'},
+                    {p: 0.25, h: 16, f: 'L4'}
                 ]
             }
         };
+
+        // --- GLOBAL STATE & SETUP ---
+        let sectionCount = 0;
+        window.calculationResults = {};
 
         /**
          * Toggles the visibility of the advanced pricing template section.
@@ -417,13 +424,14 @@
             try {
                 document.execCommand('copy');
             } catch (err) {
+                // Fallback for non-compliant environments (like some iframes)
                 console.error('Copy failed:', err);
+                // Optionally show a message box asking user to manually copy
             }
         }
 
         /**
          * Loads a predefined set of complexity, area, and sections.
-         * NOTE: This function deliberately AVOIDS touching the Advanced Pricing Template inputs.
          */
         function loadPreset(presetName) {
             const preset = PRESETS[presetName];
@@ -437,7 +445,7 @@
             // 2. Clear Existing Sections
             const container = document.getElementById('sectionsContainer');
             container.innerHTML = '';
-            sectionCount = 0; // Reset section counter
+            sectionCount = 0;
             
             // 3. Create New Sections based on preset percentages
             const totalArea = preset.totalFloorArea;
@@ -446,9 +454,9 @@
                 const area = Math.round(totalArea * s.p);
                 // The very first section must be created differently to ensure the 'Remove' button is disabled
                 if (index === 0) {
-                    addSection(true, area, s.h);
+                    addSection(true, area, s.h, s.f);
                 } else {
-                    addSection(false, area, s.h);
+                    addSection(false, area, s.h, s.f);
                 }
             });
 
@@ -468,7 +476,11 @@
                 if (value !== null) {
                     const element = document.getElementById(elementId);
                     if (element) {
-                        element.value = value;
+                        if (element.type === 'checkbox') {
+                            // Checkbox logic is removed as Mudd Skip is shelved for now
+                        } else {
+                            element.value = value;
+                        }
                         paramsFound = true;
                     }
                 }
@@ -486,9 +498,9 @@
             } else {
                  // If params were found, we still need to ensure at least one section exists if the user didn't define them via URL.
                  if (document.querySelectorAll('#sectionsContainer > div').length === 0) {
-                     // Default to a 100% 8ft section matching the loaded totalFloorArea
+                     // Default to a section matching the loaded totalFloorArea
                      const totalArea = parseFloat(document.getElementById('totalFloorArea').value) || 2500;
-                     addSection(true, totalArea, 9); 
+                     addSection(true, totalArea, 9, 'L4'); 
                  }
                  calculateEstimate(); // Recalculate based on loaded data
             }
@@ -516,11 +528,8 @@
 
         /**
          * Adds a new height section input group to the UI.
-         * @param {boolean} isInitial - Should the section be treated as the mandatory, non-removable base section.
-         * @param {number} defaultArea - The default floor area for this section (used by presets).
-         * @param {number} defaultHeight - The default height for this section (used by presets).
          */
-        function addSection(isInitial = false, defaultArea = 500, defaultHeight = 9) {
+        function addSection(isInitial = false, defaultArea = 500, defaultHeight = 9, defaultFinishLevel = 'L4') {
             sectionCount++;
             const id = `section-${sectionCount}`;
             const container = document.getElementById('sectionsContainer');
@@ -528,9 +537,6 @@
             const newSection = document.createElement('div');
             newSection.id = id;
             newSection.classList.add('bg-white', 'p-4', 'border', 'border-gray-200', 'rounded-lg', 'space-y-4', 'md:grid', 'md:grid-cols-5', 'md:gap-4', 'items-end');
-            
-            // Set Finish Level to L3 by default (Per requirement 6)
-            const defaultFinishLevel = 'L3'; 
             
             newSection.innerHTML = `
                 <div class="input-group flex flex-col">
@@ -541,13 +547,13 @@
                     <label for="${id}-height" class="mb-1 text-sm">Ceiling Height (ft)</label>
                     <input type="number" id="${id}-height" placeholder="e.g., 9" min="8" value="${defaultHeight}" oninput="calculateEstimate()" class="w-full">
                 </div>
-                <!-- Finish Level Selector (Defaults to L3) -->
+                <!-- Finish Level Selector -->
                 <div class="input-group flex flex-col">
                     <label for="${id}-finish" class="mb-1 text-sm text-yellow-700">Finish Level</label>
                     <select id="${id}-finish" onchange="calculateEstimate()" class="w-full finish-price-input">
-                        <option value="L3" selected>Level 3</option>
-                        <option value="L4">Level 4</option>
-                        <option value="L5">Level 5</option>
+                        <option value="L3" ${defaultFinishLevel === 'L3' ? 'selected' : ''}>Level 3</option>
+                        <option value="L4" ${defaultFinishLevel === 'L4' ? 'selected' : ''}>Level 4</option>
+                        <option value="L5" ${defaultFinishLevel === 'L5' ? 'selected' : ''}>Level 5</option>
                     </select>
                 </div>
                 <!-- Additional Cost Consideration (Local Adder) -->
@@ -577,7 +583,7 @@
                 calculateEstimate();
             }
         }
-
+        
         /**
          * Main function to gather all inputs and calculate the total estimate.
          */
@@ -587,20 +593,22 @@
             const beadPricePerLf = parseFloat(document.getElementById('beadPricePerLf').value) || 0;
             const totalFloorArea = parseFloat(document.getElementById('totalFloorArea').value) || 0;
 
-            // Global Adder Definitions (Home Type and Finish Level)
+            // Global Adder Definitions (Home Type, Finish Level)
             const trackAdageRate = parseFloat(document.getElementById('trackAdageRate').value) || 0; 
             const customBasicAdageRate = parseFloat(document.getElementById('customBasicAdageRate').value) || 0;
             const customComplexAdageRate = parseFloat(document.getElementById('customComplexAdageRate').value) || 0;
             const l3PriceAdage = parseFloat(document.getElementById('l3PriceAdage').value) || 0;
             const l4PriceAdage = parseFloat(document.getElementById('l4PriceAdage').value) || 0;
             const l5PriceAdage = parseFloat(document.getElementById('l5PriceAdage').value) || 0;
-
-            // --- 2. Calculate PURE LABOR Base Rate ---
-            const pureLaborBaseRate = Math.max(0, allInBasePrice - MATERIALS_COST_PER_SQFT); 
             
-            // --- 3. Apply Global Labor Adjustments ---
+            // --- 2. Calculate PURE LABOR Base Rate ---
+            // This is the starting labor rate before any project-specific adjustments
+            let pureLaborBaseRate = Math.max(0, allInBasePrice - MATERIALS_COST_PER_SQFT); 
+            
+            // --- 3. Apply Global Labor Adjustments (Complexity and Home Type) ---
             const cutUpFactor = parseFloat(document.getElementById('cutUpFactor').value) || 0;
             const selectedHomeType = document.getElementById('homeType').value;
+            const homeTypeLabel = document.getElementById('homeType').options[document.getElementById('homeType').selectedIndex].text;
             
             let homeTypeAdj = 0;
             switch (selectedHomeType) {
@@ -610,7 +618,7 @@
             }
             
             // Base Labor rate before finish level and height multipliers are applied
-            const baseLaborRate = pureLaborBaseRate + cutUpFactor + homeTypeAdj;
+            let baseLaborRate = pureLaborBaseRate + cutUpFactor + homeTypeAdj;
             
             // Area Multiplier is affected by the Cut-Up Factor
             const baseAreaMultiplier = BASE_MULTIPLIER_8FT + cutUpFactor; 
@@ -619,8 +627,9 @@
             let totalSheetrockArea = 0;
             let totalDefinedArea = 0;
             let totalSectionAdageCost = 0; 
-            let totalLaborCost = 0; // Total calculated labor cost
-            let finalFinishLevel = 'L3'; 
+            let totalLaborCost = 0;
+            let finalFinishLevel = 'L3'; // Tracks the highest level specified across all sections
+            let sectionDetails = [];
 
             const sections = document.querySelectorAll('#sectionsContainer > div');
             
@@ -628,19 +637,26 @@
                 const floorArea = parseFloat(section.querySelector('[id$="-area"]').value) || 0;
                 const ceilingHeight = parseFloat(section.querySelector('[id$="-height"]').value) || 0;
                 const sectionAdage = parseFloat(section.querySelector('[id$="-adage"]').value) || 0;
-                const selectedFinish = section.querySelector('[id$="-finish"]') ? section.querySelector('[id$="-finish"]').value : 'L3'; 
-                
-                // Track the highest finish level 
-                if (selectedFinish === 'L5') finalFinishLevel = 'L5';
-                else if (selectedFinish === 'L4' && finalFinishLevel !== 'L5') finalFinishLevel = 'L4';
+                const selectedFinish = section.querySelector('[id$="-finish"]').value; 
                 
                 totalSectionAdageCost += sectionAdage;
 
                 let finishPriceAdage = 0;
                 switch (selectedFinish) {
-                    case 'L3': finishPriceAdage = l3PriceAdage; break;
-                    case 'L4': finishPriceAdage = l4PriceAdage; break;
-                    case 'L5': finishPriceAdage = l5PriceAdage; break;
+                    case 'L3': 
+                        finishPriceAdage = l3PriceAdage;
+                        // Track the highest level
+                        if (finalFinishLevel === 'L3') finalFinishLevel = 'L3'; // Keep L3 if it's the current or new highest
+                        break;
+                    case 'L4': 
+                        finishPriceAdage = l4PriceAdage;
+                        // Track the highest level
+                        if (finalFinishLevel !== 'L5') finalFinishLevel = 'L4'; // L4 is higher than L3
+                        break;
+                    case 'L5': 
+                        finishPriceAdage = l5PriceAdage;
+                        finalFinishLevel = 'L5'; // L5 is the highest
+                        break;
                 }
                 
                 if (floorArea > 0 && ceilingHeight >= 8) {
@@ -650,14 +666,24 @@
                     totalSheetrockArea += sectionSheetrockArea;
                     totalDefinedArea += floorArea;
 
-                    // The effective LABOR price for THIS section = Base Labor Rate + Finish Adder
+                    // The effective LABOR price for THIS section = Adjusted Base Labor Rate + Finish Adder
                     const sectionEffectiveLaborPrice = baseLaborRate + finishPriceAdage;
                     const sectionLaborCost = (sectionSheetrockArea * sectionEffectiveLaborPrice);
                     totalLaborCost += sectionLaborCost;
+
+                    // Store details for contract summary
+                    sectionDetails.push({
+                        area: floorArea,
+                        height: ceilingHeight,
+                        finish: section.querySelector('[id$="-finish"]').options[section.querySelector('[id$="-finish"]').selectedIndex].text,
+                        multiplier: finalAreaMultiplier,
+                        sheetrockArea: sectionSheetrockArea,
+                        localAdder: sectionAdage
+                    });
                 }
             });
             
-            // --- 5. Final Cost Assembly (Materials are included ONCE based on total Sheetrock Area) ---
+            // --- 5. Final Cost Assembly ---
 
             // A. Dynamic Corner Bead Calculation 
             const homeTypeBaseBeadFactor = HOME_TYPE_BEAD_FACTORS[selectedHomeType] || HOME_TYPE_BEAD_FACTORS['CUSTOM_BASIC'];
@@ -666,38 +692,46 @@
             const estimatedBeadLf = totalSheetrockArea * finalBeadFactor;
             const beadCost = estimatedBeadLf * beadPricePerLf;
             
-            // All Adders/Adage Cost = Local Section Adders + Calculated Bead Cost
             const totalAddersCost = totalSectionAdageCost + beadCost;
             
             // B. Estimated Materials Cost (Fixed $0.73/sq ft of Sheetrock Area)
             const estimatedMaterialsCost = totalSheetrockArea * MATERIALS_COST_PER_SQFT;
             
-            // C. Final Total Cost = Total Labor Cost + Total Materials Cost + All Adders
+            // C. Final Total Cost
             const estimatedTotalCost = totalLaborCost + estimatedMaterialsCost + totalAddersCost; 
 
             // Effective Multiplier (weighted average)
             const effectiveOverallMultiplier = totalDefinedArea > 0 ? (totalSheetrockArea / totalDefinedArea) : 0;
 
-            // --- 6. New Rate Breakdown (Per Sheetrock Sq Ft) ---
+            // --- 6. Calculate Rates ---
             
             const weightedAvgLaborRatePerSheetrockSqFt = totalSheetrockArea > 0 ? (totalLaborCost / totalSheetrockArea) : 0;
-            
-            // This is the new CRITICAL METRIC requested: Labor + Fixed Materials
             const weightedAvgAllInRatePerSheetrockSqFt = totalSheetrockArea > 0 ? ((totalLaborCost + estimatedMaterialsCost) / totalSheetrockArea) : 0;
-            
-            // --- 7. New Rate Breakdown (Per Floor Sq Ft) ---
-
-            // 1. Total All-In Price / Floor Sq Ft
             const ratePerFloorPlanSqFt = totalFloorArea > 0 ? (estimatedTotalCost / totalFloorArea) : 0;
-            
-            // 2. Total Labor Price / Floor Sq Ft
             const laborRatePerFloorPlanSqFt = totalFloorArea > 0 ? (totalLaborCost / totalFloorArea) : 0;
-            
-            // 3. Total Materials Price / Floor Sq Ft (Includes fixed materials + calculated bead cost)
             const materialsPriceComponent = estimatedMaterialsCost + beadCost;
             const materialsRatePerFloorPlanSqFt = totalFloorArea > 0 ? (materialsPriceComponent / totalFloorArea) : 0;
 
-            // --- 8. Validation and UI Update ---
+            // --- Store results globally ---
+            window.calculationResults = {
+                totalFloorArea,
+                totalSheetrockArea,
+                estimatedTotalCost,
+                effectiveOverallMultiplier,
+                estimatedBeadLf,
+                totalLaborCost,
+                estimatedMaterialsCost,
+                totalAddersCost,
+                homeTypeLabel,
+                cutUpFactor,
+                finalFinishLevel,
+                sectionDetails,
+                weightedAvgLaborRatePerSheetrockSqFt,
+                weightedAvgAllInRatePerSheetrockSqFt
+            };
+
+
+            // --- 7. Validation and UI Update ---
 
             const isAreaValid = totalDefinedArea === totalFloorArea;
             const validationWarning = document.getElementById('validationWarning');
@@ -716,8 +750,7 @@
                 } else if (totalFloorArea === 0) {
                      validationMessage.innerHTML = `ATTENTION: Please enter a value for the **Total Floor Plan Area** in Section 1.`;
                 }
-                
-                // Set all final cost outputs to N/A or $0.00 when blocked
+                // Clear outputs when blocked
                 document.getElementById('estimatedCost').textContent = '---';
                 document.getElementById('totalLaborCostDisplay').textContent = '---';
                 document.getElementById('estimatedMaterialsCostDisplay').textContent = '---';
@@ -746,7 +779,7 @@
                 document.getElementById('materialsRatePerSqFt').textContent = formatter.format(materialsRatePerFloorPlanSqFt);
             }
 
-            // --- 9. Update All Other UI Elements ---
+            // --- 8. Update All Other UI Elements ---
             
             // Area Summary
             document.getElementById('areaSummary').innerHTML = `Total Area Defined: <span class="text-blue-600">${totalDefinedArea.toFixed(0)}</span> sq ft / ${totalFloorArea.toFixed(0)} sq ft`;
@@ -756,12 +789,6 @@
             document.getElementById('totalAddersCost').textContent = formatter.format(totalAddersCost);
             document.getElementById('estimatedBeadLf').textContent = estimatedBeadLf.toFixed(0) + ' LF';
             document.getElementById('effectiveMultiplier').textContent = effectiveOverallMultiplier.toFixed(3) + 'x';
-            
-            // Store final variables globally for the summary generator
-            window.finalFinishLevel = finalFinishLevel;
-            window.totalSheetrockArea = totalSheetrockArea;
-            window.estimatedTotalCost = estimatedTotalCost;
-            window.totalFloorArea = totalFloorArea;
         }
 
         /**
@@ -775,26 +802,83 @@
                 default: return "Finish Level details unavailable.";
             }
         }
+        
+        /**
+         * UPDATED FUNCTION: Generates the clean, pasteable text block for the Contract Form's Scope of Work field, copies it, and opens the Contract Form.
+         */
+        function generateContractScopeText() {
+            if (!document.getElementById('validationWarning').classList.contains('hidden')) {
+                document.getElementById('outputTitle').textContent = 'Cannot Generate Contract Scope';
+                document.getElementById('outputTextarea').value = "Please correct the validation error (Area Defined vs. Total Floor Area) before generating the contract text.";
+                document.getElementById('outputModal').classList.remove('hidden');
+                return;
+            }
+
+            const r = window.calculationResults;
+            const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+            
+            let sectionSummary = '';
+            r.sectionDetails.forEach((s, index) => {
+                sectionSummary += `  - Section ${index + 1}: ${s.area} sq ft @ ${s.height} ft ceilings. Finish: ${s.finish} (Local Adder: ${formatter.format(s.localAdder)})\n`;
+            });
+            
+            const scopeText = `
+--- CONTRACT SCOPE OF WORK (DRYWALL) ---
+
+A. SERVICE AGREED: Drywall Installation and Finishing, including all labor, standard materials (board, mud, tape, bead), and supervision necessary to complete the defined areas.
+
+B. TOTAL CONTRACT PRICE: ${formatter.format(r.estimatedTotalCost)}
+
+C. PROJECT DIMENSIONS:
+   - Total Floor Plan Area: ${r.totalFloorArea.toFixed(0)} sq ft
+   - Calculated Sheetrock Area: ${r.totalSheetrockArea.toFixed(0)} sq ft
+   - Effective Sheetrock Multiplier (for complexity/height): ${r.effectiveOverallMultiplier.toFixed(3)}x
+
+D. SCOPE BREAKDOWN:
+   - Home Type/Tier: ${r.homeTypeLabel}
+   - Final Finish Level: ${r.finalFinishLevel.replace('L', 'Level ')}
+   
+E. FINISH LEVEL DETAILS:
+   > ${getFinishLevelDescription(r.finalFinishLevel)}
+
+F. HEIGHT SECTION DETAILS (Floor Area):
+${sectionSummary.trim()}
+
+G. EXCLUSIONS: Price excludes painting, priming, texturing, or any repair to faulty underlying structural work. Refer to the full contract terms for all standard exclusions.
+
+--- END OF SCOPE ---
+            `.trim();
+
+            // 1. Display and Copy the text
+            document.getElementById('outputTitle').textContent = 'SCOPE COPIED! Now switch to the new tab and paste.';
+            document.getElementById('outputTextarea').value = scopeText;
+            document.getElementById('outputModal').classList.remove('hidden');
+            copyToClipboard('outputTextarea'); // Auto-copy to clipboard
+
+            // 2. Open the Contract Form in a new tab (This will work when hosted outside of this environment)
+            window.open(CONTRACT_URL, '_blank');
+        }
+
 
         /**
-         * Generates the customer-facing project summary (now with Exclusions and Assumptions).
+         * Generates the customer-facing project summary.
          */
         function generateCustomerSummary() {
             if (!document.getElementById('validationWarning').classList.contains('hidden')) {
-                // Use a custom message box instead of alert()
                 document.getElementById('outputTitle').textContent = 'Cannot Generate Summary';
                 document.getElementById('outputTextarea').value = "Please correct the validation error (Area Defined vs. Total Floor Area) before generating a summary.";
                 document.getElementById('outputModal').classList.remove('hidden');
                 return;
             }
 
-            const area = window.totalFloorArea.toFixed(0);
-            const sheetrockArea = window.totalSheetrockArea.toFixed(0);
-            const totalCost = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(window.estimatedTotalCost);
-            const finishLevelCode = window.finalFinishLevel;
-            const finishLevelText = finishLevelCode.replace('L', 'Level ');
-            const finishDescription = getFinishLevelDescription(finishLevelCode);
-            const homeType = document.getElementById('homeType').options[document.getElementById('homeType').selectedIndex].text;
+            const r = window.calculationResults;
+            const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+            const area = r.totalFloorArea.toFixed(0);
+            const totalCost = formatter.format(r.estimatedTotalCost);
+            const finishLevelText = r.finalFinishLevel.replace('L', 'Level ');
+            const finishDescription = getFinishLevelDescription(r.finalFinishLevel);
+            const homeType = r.homeTypeLabel;
 
             const summary = `
 --- PROJECT ESTIMATE AND QUOTATION ---
@@ -802,17 +886,17 @@ Contractor: [Your Company Name]
 Client: [Client Name]
 Date: ${new Date().toLocaleDateString()}
 Total Floor Plan Area: ${area} sq ft
-Estimated Sheetrock Area: ${sheetrockArea} sq ft
+Home Pricing Tier: ${homeType}
 
 --------------------------------------------------
 PROJECT SCOPE & INCLUSIONS
 --------------------------------------------------
-This quotation covers the professional labor and material costs for the installation and finishing of all required sheetrock for the ${homeType} structure (Total Area: ${area} sq ft).
+This quotation covers the professional labor and material costs for the installation and finishing of all required sheetrock for the structure (Total Area: ${area} sq ft).
 
 1. FINISH LEVEL: **${finishLevelText}**
    > ${finishDescription}
 
-2. MATERIALS: Includes standard 1/2" or 5/8" drywall, all necessary screws, taping compounds, and standard paper-faced or vinyl corner beads (estimated LF).
+2. MATERIALS: Includes standard 1/2" or 5/8" drywall, all necessary screws, taping compounds, and standard corner beads.
 
 3. WORK: Includes framing inspection, board hanging, tape and mud application, and site cleanup related to the drywall process.
 
@@ -823,22 +907,17 @@ TOTAL ESTIMATED PROJECT CHARGE: ${totalCost}
 --------------------------------------------------
 ASSUMPTIONS AND CONDITIONS
 --------------------------------------------------
-The following conditions are assumed for this quotation. Any deviation may result in a change order or price adjustment:
 * **Site Readiness:** The work area is clear of debris, plumbing, HVAC, and electrical work is complete, and the site is ready for dry-walling upon arrival.
 * **Framing:** All framing is square, plumb, structurally sound, and meets local building code requirements.
 * **Utilities:** Access to 120V power and running water is provided on-site.
-* **Environment:** Adequate ventilation and temperature control (HVAC functional) are maintained to allow proper curing of joint compounds.
 
 --------------------------------------------------
 EXCLUSIONS (NOT INCLUDED IN THIS PRICE)
 --------------------------------------------------
-This quotation specifically excludes the following:
 * Repair of any framing defects or corrections.
 * Painting, priming, texturing, or wallpaper application.
 * Supply or rental of specialized lifting equipment, scaffolding, or man-lifts required for extreme heights (over 16ft).
-* Disposal or hauling of non-drywall construction debris (e.g., lumber, insulation).
-* Any work related to fireproofing, soundproofing, or specialty wall finishes (e.g., Venetian plaster).
-* Applicable sales tax or permit fees.
+* Disposal or hauling of non-drywall construction debris.
 
 --- END OF QUOTATION ---
             `.trim();
@@ -858,7 +937,6 @@ This quotation specifically excludes the following:
             for (const [key, elementId] of Object.entries(URL_PARAM_MAP)) {
                 const element = document.getElementById(elementId);
                 if (element && element.value !== undefined) {
-                    // Only include parameters if they differ from a default/zero value (optional optimization)
                     if (element.value !== '0.00' && element.value !== '0' && element.value !== '0.0') {
                         params.set(key, element.value);
                     }
